@@ -43,7 +43,7 @@ class ContractAnalyzer:
 
     async def get_summary(self, text: str) -> str:
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4-0125-preview",  # Latest GPT-4 Turbo
             messages=[
                 {
                     "role": "system", 
@@ -53,15 +53,14 @@ class ContractAnalyzer:
                     Keep it simple and direct."""
                 },
                 {"role": "user", "content": f"Summarize this contract:\n\n{text}"}
-            ]
+            ],
+            temperature=0.3  # More focused output
         )
-        # Clean any remaining markdown
-        summary = response.choices[0].message.content
-        return summary.replace('*', '').replace('#', '').replace('-', '').strip()
+        return response.choices[0].message.content.strip()
 
     async def analyze_risks(self, text: str) -> List[Dict]:
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4-0125-preview",  # Latest GPT-4 Turbo
             messages=[
                 {
                     "role": "system", 
@@ -73,7 +72,8 @@ class ContractAnalyzer:
                     Format: severity: description"""
                 },
                 {"role": "user", "content": f"What are the key risks in this contract?\n\n{text}"}
-            ]
+            ],
+            temperature=0.2  # More consistent output
         )
         risks = []
         for line in response.choices[0].message.content.split('\n'):
@@ -89,11 +89,15 @@ class ContractAnalyzer:
 
     async def extract_dates(self, text: str) -> List[Dict]:
         response = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4-0125-preview",  # Latest GPT-4 Turbo
             messages=[
-                {"role": "system", "content": "You are a contract analyzer. Extract important dates in YYYY-MM-DD format only."},
+                {
+                    "role": "system", 
+                    "content": "Extract important dates in YYYY-MM-DD format only. Focus on deadlines, effective dates, and termination dates."
+                },
                 {"role": "user", "content": f"Extract important dates from this contract. Format: type: YYYY-MM-DD (one per line):\n\n{text}"}
-            ]
+            ],
+            temperature=0.1  # Most consistent output for date extraction
         )
         dates = []
         for line in response.choices[0].message.content.split('\n'):
@@ -140,11 +144,15 @@ async def ask_question(request: dict):
             raise HTTPException(status_code=400, detail="Missing question or contract text")
 
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4-0125-preview",  # Latest GPT-4 Turbo
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that answers questions about contracts."},
+                {
+                    "role": "system", 
+                    "content": "You are a helpful assistant that answers questions about contracts. Provide clear, direct answers."
+                },
                 {"role": "user", "content": f"Contract text: {text}\n\nQuestion: {question}"}
-            ]
+            ],
+            temperature=0.3
         )
         
         return {"answer": response.choices[0].message.content}

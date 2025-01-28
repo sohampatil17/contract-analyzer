@@ -69,22 +69,13 @@ const ContractAnalyzer = () => {
 
   const handleAskQuestion = async () => {
     if (!query.trim() || !contractText) return;
-    setLoading(true);
-
-    // Format the summary text to remove markdown
-    const formatText = (text: string) => {
-      return text
-        .replace(/#{1,6}\s/g, '') // Remove heading markers
-        .replace(/\*\*/g, '')     // Remove bold markers
-        .replace(/- /g, '• ')     // Replace dashes with bullets
-        .trim();
-    };
-
-    const userMessage: Message = { role: 'user', content: query };
-    setMessages(prev => [...prev, userMessage]);
-    setQuery('');
 
     try {
+      setLoading(true);
+      const newMessage: Message = { role: 'user', content: query };
+      setMessages(prev => [...prev, newMessage]);
+      setQuery('');
+
       const response = await fetch('http://localhost:8001/ask', {
         method: 'POST',
         headers: {
@@ -92,25 +83,18 @@ const ContractAnalyzer = () => {
         },
         body: JSON.stringify({
           question: query,
-          text: contractText,
-        }),
+          text: contractText
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get answer');
-      }
-
-      const result = await response.json();
-      const formattedAnswer = formatText(result.answer);
-      const assistantMessage: Message = { role: 'assistant', content: formattedAnswer };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error: Error | unknown) {
-      console.error('Error getting answer:', error);
-      const errorMessage: Message = { 
-        role: 'assistant', 
-        content: 'Sorry, I encountered an error. Please try again.' 
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      if (!response.ok) throw new Error('Failed to get answer');
+      
+      const data = await response.json();
+      const aiMessage: Message = { role: 'assistant', content: data.answer };
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to get answer. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -191,6 +175,19 @@ const ContractAnalyzer = () => {
             )}
           </CardContent>
         </Card>
+      ) : loading ? (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded-xl shadow-xl flex flex-col items-center space-y-4">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-[#2B5672]/20 border-t-[#2B5672] rounded-full animate-spin"></div>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <div className="w-8 h-8 border-4 border-transparent border-t-[#4A90E2] rounded-full animate-spin animation-delay-150"></div>
+              </div>
+            </div>
+            <p className="text-[#2B5672] font-medium text-lg">Analyzing your contract...</p>
+            <p className="text-sm text-gray-500">Using advanced AI to process your document</p>
+          </div>
+        </div>
       ) : analysis ? (
         // Analysis display
         <div className="flex gap-6">
@@ -304,43 +301,42 @@ const ContractAnalyzer = () => {
                       {messages.map((message, index) => (
                         <div
                           key={index}
-                          className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          className={`flex ${
+                            message.role === 'user' ? 'justify-end' : 'justify-start'
+                          }`}
                         >
                           <div
                             className={`max-w-[80%] rounded-lg p-3 ${
                               message.role === 'user'
                                 ? 'bg-[#2B5672] text-white'
-                                : 'bg-white border border-gray-200 text-black'
+                                : 'bg-gray-100 text-black'
                             }`}
                           >
                             {message.content}
                           </div>
                         </div>
                       ))}
-                      {loading && (
-                        <div className="flex justify-start">
-                          <div className="bg-white border border-gray-200 rounded-lg p-3">
-                            <div className="animate-pulse text-black">Thinking...</div>
-                          </div>
-                        </div>
-                      )}
                     </div>
-                    <div className="flex gap-2 mt-auto">
+                    <div className="flex gap-2 mt-4">
                       <input
                         type="text"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleAskQuestion()}
-                        placeholder="Ask about your contract..."
-                        className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2B5672] bg-white text-black placeholder-gray-500"
+                        placeholder="Ask a question about the contract..."
+                        className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2B5672]"
                       />
-                      <button
-                        className="px-6 py-3 bg-[#2B5672] text-white rounded-lg hover:bg-[#1a3f5c] transition-colors disabled:opacity-50"
+                      <Button
                         onClick={handleAskQuestion}
-                        disabled={loading || !query.trim()}
+                        disabled={!query.trim() || loading}
+                        className="bg-[#2B5672] text-white hover:bg-[#1a3f5c]"
                       >
-                        Send
-                      </button>
+                        {loading ? (
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          'Ask'
+                        )}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -350,7 +346,7 @@ const ContractAnalyzer = () => {
         </div>
       ) : (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B5672]"></div>
+          <div className="text-red-500">Failed to analyze contract. Please try again.</div>
         </div>
       )}
 
